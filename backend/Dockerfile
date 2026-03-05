@@ -1,20 +1,27 @@
-# Imagen base
-FROM node:20-alpine
+# ----------- Build stage -----------
+FROM node:20-alpine AS builder
 
-# Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar package.json
 COPY package*.json ./
-
-# Instalar dependencias
 RUN npm install
 
-# Copiar todo el proyecto
 COPY . .
 
-# Exponer puerto
-EXPOSE 3000
+RUN npm run build
 
-# Comando de inicio
-CMD ["npm", "start"]
+# ----------- Production stage -----------
+FROM node:20-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY --from=builder /app/dist ./dist
+
+EXPOSE 4000
+
+CMD ["node", "dist/app.js"]

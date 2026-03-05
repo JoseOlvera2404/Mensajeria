@@ -27,6 +27,7 @@ services:
       DB_NAME: mensajeria
       DB_PORT: 5432
       PORT: 4000
+      JWT_SECRET: 302a39c35c86b3cbb01716c13ecf614d423e5391966d9e9ec9295cb733573b05f74e84d92f4230c985231e461c1361b3f7c43eeb0fff9b6e25f8a010a522d6f8
     ports:
       - "4000:4000"
 
