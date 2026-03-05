@@ -1,0 +1,77 @@
+version: "3.9"
+
+services:
+
+  db:
+    image: postgres:16
+    container_name: postgres-mensajeria
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: mensajeria
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  backend:
+    image: node:20-alpine
+    container_name: backend-mensajeria
+    working_dir: /app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+    command: sh -c "npm install && npm run dev"
+
+    environment:
+      DB_HOST: db
+      DB_USER: postgres
+      DB_PASSWORD: 123456
+      DB_NAME: mensajeria
+      DB_PORT: 5432
+      PORT: 4000
+      JWT_SECRET: 302a39c35c86b3cbb01716c13ecf614d423e5391966d9e9ec9295cb733573b05f74e84d92f4230c985231e461c1361b3f7c43eeb0fff9b6e25f8a010a522d6f8
+      CLOUDINARY_CLOUD_NAME: xxxx
+      CLOUDINARY_API_KEY: xxxx
+      CLOUDINARY_API_SECRET: xxxx
+
+    ports:
+      - "4000:4000"
+
+
+  frontend:
+    image: node:20-alpine
+    container_name: frontend-mensajeria
+    working_dir: /app
+    restart: always
+    depends_on:
+      - backend
+
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+    command: sh -c "npm install && npm run dev"
+
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+
+    ports:
+      - "3000:3000"
+
+
+volumes:
+  postgres_data:
