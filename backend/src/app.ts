@@ -9,18 +9,22 @@ dotenv.config();
 
 const app = express();
 
+// Middlewares
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (_req, res) => {
-  res.send("API Mensajeria funcionando 🚀");
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ message: "API funcionando correctamente" });
 });
 
-app.use("/api/auth", authRoutes);
-app.use("/users", userRoutes);
+const PORT = process.env.PORT || 4000;
 
-const PORT: number = Number(process.env.PORT) || 4000;
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
