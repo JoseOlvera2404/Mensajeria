@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import friendRoutes from "./routes/friend.routes.js";
 
 dotenv.config();
 
@@ -17,10 +18,11 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/friends", friendRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({ message: "API funcionando correctamente" });
+  res.json({ message: "API funcionando correctamente con watch" });
 });
 
 const PORT = process.env.PORT || 4000;
