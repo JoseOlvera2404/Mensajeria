@@ -23,7 +23,7 @@ router.patch("/profile", authenticate, updateProfile);
 router.patch(
   "/profile-picture",
   authenticate,
-  upload.single("image"),
+  upload.single("file"),
   updateProfilePicture
 );
 
