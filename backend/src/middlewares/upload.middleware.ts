@@ -5,6 +5,17 @@ const storage = multer.memoryStorage();
 export const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 20 * 1024 * 1024,
   },
+
+  fileFilter: (req, file, cb) => {
+
+    if (!file.mimetype) {
+      return cb(new Error("Tipo de archivo inválido"));
+    }
+
+    cb(null, true);
+
+  }
+
 });
