@@ -1,15 +1,24 @@
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
 
-export const uploadImage = (
-  buffer: Buffer
-): Promise<{ secure_url: string; public_id: string }> => {
+type UploadResult = {
+  secure_url: string;
+  public_id: string;
+};
+
+const uploadBuffer = (
+  buffer: Buffer,
+  folder: string
+): Promise<UploadResult> => {
 
   return new Promise((resolve, reject) => {
 
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "mensajeria",
+        folder,
+        resource_type: "auto",
+        quality: "auto",
+        fetch_format: "auto"
       },
       (error, result) => {
 
@@ -30,6 +39,36 @@ export const uploadImage = (
   });
 
 };
+
+
+
+// ==============================
+// PROFILE PICTURES
+// ==============================
+
+export const uploadImage = (buffer: Buffer) => {
+
+  return uploadBuffer(buffer, "mensajeria/profile_pictures");
+
+};
+
+
+
+// ==============================
+// CHAT FILES
+// ==============================
+
+export const uploadChatFile = (buffer: Buffer) => {
+
+  return uploadBuffer(buffer, "mensajeria/chat_files");
+
+};
+
+
+
+// ==============================
+// DELETE
+// ==============================
 
 export const deleteImage = async (publicId: string) => {
 
