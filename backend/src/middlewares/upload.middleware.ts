@@ -7,4 +7,15 @@ export const upload = multer({
   limits: {
     fileSize: 20 * 1024 * 1024,
   },
+
+  fileFilter: (req, file, cb) => {
+
+    if (!file.mimetype) {
+      return cb(new Error("Tipo de archivo inválido"));
+    }
+
+    cb(null, true);
+
+  }
+
 });

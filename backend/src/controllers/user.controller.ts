@@ -2,6 +2,7 @@ import { Response } from "express";
 import pool from "../config/db.js";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 import { uploadImage, deleteImage } from "../services/cloudinary.service.js";
+import { isUserOnline } from "../services/presence.service.js";
 
 
 // =============================
@@ -61,7 +62,15 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    return res.json(result.rows[0]);
+    const user = result.rows[0];
+
+    const online = isUserOnline(user.id);
+
+    return res.json({
+      ...user,
+      is_online: online,
+      last_seen: online ? null : null
+    });
 
   } catch (error) {
 
@@ -70,7 +79,9 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       message: "Error interno del servidor"
     });
+
   }
+
 };
 
 
@@ -97,7 +108,12 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
       [q]
     );
 
-    return res.json(result.rows);
+    const users = result.rows.map((user) => ({
+      ...user,
+      is_online: isUserOnline(user.id)
+    }));
+
+    return res.json(users);
 
   } catch (error) {
 

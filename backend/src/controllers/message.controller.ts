@@ -2,6 +2,7 @@ import { Response } from "express";
 import pool from "../config/db.js";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 import { uploadChatFile } from "../services/cloudinary.service.js";
+import {getIO } from "../services/socket.service.js";
 
 
 // =============================
@@ -17,6 +18,12 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     if (!conversationId) {
       return res.status(400).json({
         message: "conversationId requerido"
+      });
+    }
+
+    if (!content || content.trim() === "") {
+      return res.status(400).json({
+        message: "El mensaje no puede estar vacío"
       });
     }
 
@@ -41,8 +48,24 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       [conversationId, senderId, content]
     );
 
+    const messageId = result.rows[0].id;
+
+    // ==========================
+    // WEBSOCKET EVENT
+    // ==========================
+
+    const io = getIO();
+
+    io.to(conversationId).emit("new_message", {
+      messageId,
+      conversationId,
+      senderId,
+      content,
+      messageType: "text"
+    });
+
     return res.json({
-      messageId: result.rows[0].id
+      messageId
     });
 
   } catch (error) {
@@ -72,8 +95,8 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
     const member = await pool.query(
       `SELECT 1
        FROM mensajeria.conversation_members
-       WHERE conversation_id=$1
-       AND user_id=$2`,
+       WHERE conversation_id = $1
+       AND user_id = $2`,
       [conversationId, userId]
     );
 
@@ -99,8 +122,12 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
         m.message_type,
         m.sent_at,
         m.sender_id,
-        u.name,
-        u.profile_picture_url,
+
+        json_build_object(
+          'id', u.id,
+          'name', u.name,
+          'profile_picture_url', u.profile_picture_url
+        ) AS sender,
 
         COALESCE(
           json_agg(
@@ -117,15 +144,17 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       FROM mensajeria.messages m
 
       JOIN mensajeria.users u
-      ON u.id = m.sender_id
+        ON u.id = m.sender_id
 
       LEFT JOIN mensajeria.message_attachments a
-      ON a.message_id = m.id
+        ON a.message_id = m.id
 
-      WHERE m.conversation_id=$1
+      WHERE m.conversation_id = $1
       ${cursorCondition}
 
-      GROUP BY m.id, u.id
+      GROUP BY
+        m.id,
+        u.id
 
       ORDER BY m.sent_at DESC
       LIMIT 50
@@ -164,7 +193,6 @@ export const markMessagesAsRead = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // compatibilidad con tabla message_reads
     await pool.query(
       `INSERT INTO mensajeria.message_reads
        (message_id,user_id)
@@ -173,16 +201,23 @@ export const markMessagesAsRead = async (req: AuthRequest, res: Response) => {
       [messageId, userId]
     );
 
-    // optimización principal
     if (conversationId) {
 
       await pool.query(
         `UPDATE mensajeria.conversation_members
-         SET last_read_message_id=$1
+         SET last_read_message_id=$1,
+             unread_count = 0
          WHERE conversation_id=$2
          AND user_id=$3`,
         [messageId, conversationId, userId]
       );
+
+      const io = getIO();
+
+      io.to(conversationId).emit("message_seen", {
+        messageId,
+        userId
+      });
 
     }
 
@@ -213,19 +248,39 @@ export const sendFileMessage = async (req: AuthRequest, res: Response) => {
     const senderId = req.userId;
     const { conversationId } = req.body;
 
+    if (!conversationId) {
+      return res.status(400).json({
+        message: "conversationId requerido"
+      });
+    }
+
     if (!req.file) {
       return res.status(400).json({
         message: "Archivo requerido"
       });
     }
 
+    const mimetype = req.file.mimetype;
+
+    let messageType: "image" | "video" | "audio" | "file" = "file";
+
+    if (mimetype.startsWith("image/")) {
+      messageType = "image";
+    } 
+    else if (mimetype.startsWith("video/")) {
+      messageType = "video";
+    }
+    else if (mimetype.startsWith("audio/")) {
+      messageType = "audio";
+    }
+
     const upload = await uploadChatFile(req.file.buffer);
 
     const message = await pool.query(
       `SELECT mensajeria.send_message(
-        $1,$2,NULL,'file'
+        $1,$2,NULL,$3
       ) AS id`,
-      [conversationId, senderId]
+      [conversationId, senderId, messageType]
     );
 
     const messageId = message.rows[0].id;
@@ -244,10 +299,29 @@ export const sendFileMessage = async (req: AuthRequest, res: Response) => {
       ]
     );
 
+    // ==========================
+    // WEBSOCKET EVENT
+    // ==========================
+
+    const io = getIO();
+
+    io.to(conversationId).emit("new_message", {
+      messageId,
+      conversationId,
+      senderId,
+      messageType,
+      fileUrl: upload.secure_url,
+      thumbnailUrl: upload.thumbnail_url,
+      previewUrl: upload.preview_url
+    });
+
     return res.json({
       message: "Archivo enviado",
       messageId,
-      fileUrl: upload.secure_url
+      messageType,
+      fileUrl: upload.secure_url,
+      thumbnailUrl: upload.thumbnail_url,
+      previewUrl: upload.preview_url
     });
 
   } catch (error) {

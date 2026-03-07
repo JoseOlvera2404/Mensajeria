@@ -180,9 +180,7 @@ export const getUserConversations = async (req: AuthRequest, res: Response) => {
         lm.sent_at AS last_message_time,
         lm.sender_id AS last_message_sender,
 
-        COUNT(m.id) FILTER (
-          WHERE m.id > cm.last_read_message_id
-        ) AS unread_count
+        cm.unread_count
 
       FROM mensajeria.conversation_members cm
 
@@ -202,24 +200,7 @@ export const getUserConversations = async (req: AuthRequest, res: Response) => {
       LEFT JOIN mensajeria.conversation_last_message lm
       ON lm.conversation_id = c.id
 
-      LEFT JOIN mensajeria.messages m
-      ON m.conversation_id = c.id
-      AND (
-        cm.last_read_message_id IS NULL
-        OR m.id > cm.last_read_message_id
-      )
-
       WHERE cm.user_id=$1
-
-      GROUP BY
-        c.id,
-        c.type,
-        c.name,
-        other_user.name,
-        lm.content,
-        lm.sent_at,
-        lm.sender_id,
-        cm.last_read_message_id
 
       ORDER BY lm.sent_at DESC NULLS LAST
       `,

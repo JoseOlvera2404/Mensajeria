@@ -4,7 +4,14 @@ import streamifier from "streamifier";
 type UploadResult = {
   secure_url: string;
   public_id: string;
+  thumbnail_url?: string;
+  preview_url?: string;
 };
+
+
+// ==============================
+// GENERIC BUFFER UPLOAD
+// ==============================
 
 const uploadBuffer = (
   buffer: Buffer,
@@ -22,14 +29,34 @@ const uploadBuffer = (
       },
       (error, result) => {
 
-        if (error || !result) {
-          reject(error);
-        } else {
-          resolve({
-            secure_url: result.secure_url,
-            public_id: result.public_id
-          });
+        if (error) {
+          return reject(error);
         }
+
+        if (!result) {
+          return reject(new Error("Cloudinary upload failed"));
+        }
+
+        // generar urls transformadas
+        const thumbnail = cloudinary.url(result.public_id, {
+          width: 300,
+          height: 300,
+          crop: "fill",
+          resource_type: "image"
+        });
+
+        const preview = cloudinary.url(result.public_id, {
+          width: 800,
+          crop: "limit",
+          resource_type: "image"
+        });
+
+        resolve({
+          secure_url: result.secure_url,
+          public_id: result.public_id,
+          thumbnail_url: thumbnail,
+          preview_url: preview
+        });
 
       }
     );
@@ -41,17 +68,18 @@ const uploadBuffer = (
 };
 
 
-
 // ==============================
 // PROFILE PICTURES
 // ==============================
 
 export const uploadImage = (buffer: Buffer) => {
 
-  return uploadBuffer(buffer, "mensajeria/profile_pictures");
+  return uploadBuffer(
+    buffer,
+    "mensajeria/profile_pictures"
+  );
 
 };
-
 
 
 // ==============================
@@ -60,17 +88,21 @@ export const uploadImage = (buffer: Buffer) => {
 
 export const uploadChatFile = (buffer: Buffer) => {
 
-  return uploadBuffer(buffer, "mensajeria/chat_files");
+  return uploadBuffer(
+    buffer,
+    "mensajeria/chat_files"
+  );
 
 };
 
 
-
 // ==============================
-// DELETE
+// DELETE FILE
 // ==============================
 
 export const deleteImage = async (publicId: string) => {
+
+  if (!publicId) return;
 
   return cloudinary.uploader.destroy(publicId);
 
