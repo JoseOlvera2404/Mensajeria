@@ -4,6 +4,7 @@ import { AuthRequest } from "../middlewares/auth.middleware.js";
 import { uploadChatFile } from "../services/cloudinary.service.js";
 import { getIO } from "../services/socket.service.js";
 import { encrypt, decrypt } from "../services/encryption.service.js";
+import { askAI } from "../services/ai.service.js";
 
 // =============================
 // POST /messages
@@ -57,7 +58,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       id: messageId,
       conversationId,
       sender_id: senderId,
-      content, // ⚠️ enviamos texto plano al cliente
+      content,
       message_type: "text",
       attachments: [],
       sent_at: new Date()
@@ -73,10 +74,57 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     );
 
     members.rows.forEach((m:any)=>{
-
       io.to(`user:${m.user_id}`).emit("new_message", message);
-
     });
+
+    // =============================
+    // RESPUESTA DEL CHATBOT
+    // =============================
+
+    const botId = process.env.CHATBOT_USER_ID;
+
+    if(botId){
+
+      const isBotConversation = members.rows.some(
+        (m:any)=>m.user_id === botId
+      );
+
+      if(isBotConversation && senderId !== botId){
+
+        const aiReply = await askAI(conversationId, content);
+
+        const encryptedReply = encrypt(aiReply);
+
+        const botMessage = await pool.query(
+          `SELECT mensajeria.send_message(
+            $1,$2,$3,'text'
+          ) AS id`,
+          [
+            conversationId,
+            botId,
+            encryptedReply
+          ]
+        );
+
+        const botPayload = {
+          id: botMessage.rows[0].id,
+          conversationId,
+          sender_id: botId,
+          content: aiReply,
+          message_type: "text",
+          attachments: [],
+          sent_at: new Date()
+        };
+
+        members.rows.forEach((m:any)=>{
+          io.to(`user:${m.user_id}`).emit("new_message", botPayload);
+        });
+
+      }
+
+    }
+
+    // =============================
 
     return res.json(message);
 

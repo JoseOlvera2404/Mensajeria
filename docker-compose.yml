@@ -50,6 +50,7 @@ services:
       CLOUDINARY_API_SECRET: geB7J4_WzbGIk9UtE_BXOatAG3I
       RESEND_API_KEY: re_MuWqMuFd_2kGvdBYXSTifFNQVNRsFUKj5
       EMAIL_FROM: authentification@joseolvera.com
+      MESSAGE_SECRET: 380d2584beee8fbc91e55909cd2b31fe2e1fec08f55a7b5eac2dfbe2a3973c38
 
     ports:
       - "4000:4000"

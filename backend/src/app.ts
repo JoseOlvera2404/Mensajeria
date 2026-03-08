@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import http from "http";
+import {askAI} from "./services/ai.service.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
@@ -40,6 +41,7 @@ app.use("/api/messages", messageRoutes);
 app.get("/api/health", (req, res) => {
   res.json({ message: "API funcionando correctamente con WebSockets" });
 });
+
 
 // ============================
 // HTTP SERVER + SOCKET.IO

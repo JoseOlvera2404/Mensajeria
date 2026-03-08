@@ -50,6 +50,8 @@ export const register = async (req: Request, res: Response) => {
       [name,email,hashedPassword]
     );
 
+    const user = result.rows[0];
+
     await pool.query(
       `UPDATE mensajeria.email_codes
        SET used=true
@@ -57,9 +59,44 @@ export const register = async (req: Request, res: Response) => {
       [codeResult.rows[0].id]
     );
 
+    // =============================
+    // CREAR CONVERSACIÓN CON BOT
+    // =============================
+
+    const botId = process.env.CHATBOT_USER_ID;
+
+    const conversation = await pool.query(
+      `
+      INSERT INTO mensajeria.conversations
+      (type,name,created_by)
+      VALUES('private','Asistente',$1)
+      RETURNING id
+      `,
+      [user.id]
+    );
+
+    const conversationId = conversation.rows[0].id;
+
+    await pool.query(
+      `
+      INSERT INTO mensajeria.conversation_members
+      (conversation_id,user_id)
+      VALUES
+      ($1,$2),
+      ($1,$3)
+      `,
+      [
+        conversationId,
+        user.id,
+        botId
+      ]
+    );
+
+    // =============================
+
     return res.status(201).json({
       message:"Usuario creado",
-      user:result.rows[0]
+      user
     });
 
   } catch(error){
