@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MessageBubble from "./MessageBubble";
 import { useChat } from "@/src/context/ChatContext";
@@ -27,10 +27,40 @@ export default function MessageList(){
 
   const { user } = useAuth();
 
+  const [showScrollButton,setShowScrollButton] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // mantener conversación actual en ref
   useEffect(()=>{
-    activeConversationRef.current = activeConversation;
-  },[activeConversation]);
+      activeConversationRef.current = activeConversation;
+    },[activeConversation]);
+
+    useEffect(()=>{
+
+    const el = containerRef.current;
+
+    if(!el) return;
+
+    const handleScroll = ()=>{
+
+      const distanceFromBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight;
+
+      if(distanceFromBottom > 120){
+        setShowScrollButton(true);
+      }else{
+        setShowScrollButton(false);
+      }
+
+    };
+
+    el.addEventListener("scroll",handleScroll);
+
+    return ()=>{
+      el.removeEventListener("scroll",handleScroll);
+    };
+
+  },[]);
 
   // ===============================
   // CARGAR MENSAJES
@@ -142,10 +172,11 @@ export default function MessageList(){
   // ===============================
   useEffect(()=>{
 
-    bottomRef.current?.scrollIntoView({
-      behavior:"smooth"
-    });
-
+  if(!showScrollButton){
+      bottomRef.current?.scrollIntoView({
+        behavior:"smooth"
+      });
+    }
   },[messages]);
 
   if(!activeConversation){
@@ -160,19 +191,50 @@ export default function MessageList(){
 
   return(
 
-    <ScrollArea className="flex-1 p-4 space-y-3">
+    <div className="relative h-full">
 
-      {messages.map((m)=>(
-        <MessageBubble
-          key={m.id ?? m.tempId}
-          message={m}
-        />
-      ))}
+      <ScrollArea className="h-full p-4">
 
-      <div ref={bottomRef}></div>
+        <div
+          ref={containerRef}
+          className="space-y-3"
+        >
 
-    </ScrollArea>
+          {messages.map((m)=>(
+            <MessageBubble
+              key={m.id ?? m.tempId}
+              message={m}
+            />
+          ))}
 
-  )
+          <div ref={bottomRef}></div>
+
+        </div>
+
+      </ScrollArea>
+
+      {showScrollButton && (
+
+        <button
+          onClick={()=>{
+            bottomRef.current?.scrollIntoView({
+              behavior:"smooth"
+            });
+          }}
+          className="
+            absolute bottom-20 right-6
+            bg-blue-600 text-white
+            px-3 py-1 rounded-full
+            text-sm shadow
+          "
+        >
+          ↓ nuevos mensajes
+        </button>
+
+      )}
+
+    </div>
+
+  );
 
 }

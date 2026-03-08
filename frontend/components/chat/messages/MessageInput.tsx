@@ -7,6 +7,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getSocket } from "@/src/services/socket.service";
+import { sendFileMessage } from "@/src/services/message.service";
 
 export default function MessageInput(){
 
@@ -16,6 +17,8 @@ export default function MessageInput(){
   const [text,setText] = useState("");
 
   const typingTimeout = useRef<any>(null);
+
+  const fileRef = useRef<HTMLInputElement>(null);
 
   let socket:any = null;
 
@@ -95,8 +98,39 @@ export default function MessageInput(){
 
   return(
 
-    <div className="p-3 border-t flex gap-2">
+    <div className="p-3 border-t flex gap-2 items-center">
 
+      <input
+        type="file"
+        ref={fileRef}
+        className="hidden"
+        onChange={async (e)=>{
+
+          const file = e.target.files?.[0];
+
+          if(!file) return;
+
+          try{
+
+            await sendFileMessage(
+              activeConversation.id,
+              file
+            );
+
+          }catch(err){
+            console.error("upload error",err);
+          }
+
+        }}
+      />
+
+      <Button
+        variant="outline"
+        onClick={()=>fileRef.current?.click()}
+      >
+        📎
+      </Button>
+      
       <Input
         value={text}
         placeholder="Escribe un mensaje..."

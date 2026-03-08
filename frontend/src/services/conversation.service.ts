@@ -7,3 +7,13 @@ export const getConversations = async () => {
   return res.data;
 
 };
+
+export const createDirectConversation = async (userId:string)=>{
+  const res = await api.post("/conversations/private",{ userId });
+  return res.data;
+};
+
+export const createGroupConversation = async (name:string)=>{
+  const res = await api.post("/conversations/group",{ name });
+  return res.data;
+};

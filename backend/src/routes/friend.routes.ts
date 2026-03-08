@@ -9,7 +9,9 @@ import {
   getFriendRequests,
   deleteFriend,
   getBlockedUsers,
-  unblockUser
+  unblockUser,
+  getFriendStatus,
+  rejectFriendRequest
 } from "../controllers/friend.controller.js";
 import { get } from "node:http";
 
@@ -30,5 +32,9 @@ router.delete("/:id", authenticate, deleteFriend);
 router.get("/blocked", authenticate, getBlockedUsers);
 
 router.post("/unblock", authenticate, unblockUser);
+
+router.get("/status/:userId", authenticate, getFriendStatus);
+
+router.post("/reject", authenticate, rejectFriendRequest);
 
 export default router;
