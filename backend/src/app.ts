@@ -75,6 +75,10 @@ app.get("/db-test", async (_req: Request, res: Response) => {
 
 });
 
+app.get("/", (_req, res) => {
+  res.send("Backend running 🚀");
+});
+
 // ============================
 // HTTP SERVER + SOCKET.IO
 // ============================
