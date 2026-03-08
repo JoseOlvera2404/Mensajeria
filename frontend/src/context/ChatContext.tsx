@@ -58,16 +58,16 @@ export const ChatProvider = ({children}:{children:React.ReactNode}) => {
   // ==========================
   // MARK MESSAGE SEEN
   // ==========================
-
   const markMessageSeen = (messageId:string,userId:string)=>{
 
     setMessages(prev =>
 
       prev.map(m => {
 
-        if(String(m.id) === String(messageId)){
+        // solo marcar mensajes enviados por mí
+        if(m.sender_id){
 
-          const seenBy = m.seen_by || [];
+          const seenBy = Array.isArray(m.seen_by) ? m.seen_by : [];
 
           if(seenBy.includes(userId)) return m;
 

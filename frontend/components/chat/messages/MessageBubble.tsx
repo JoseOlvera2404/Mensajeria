@@ -15,7 +15,8 @@ export default function MessageBubble({ message }: any) {
 
   const seenBy = message.seen_by || [];
 
-  const seen = seenBy.length > 0;
+  // visto solo si alguien diferente a mí lo vio
+  const seen = seenBy.some((u:any) => String(u) !== String(user?.id));
 
   return (
 
