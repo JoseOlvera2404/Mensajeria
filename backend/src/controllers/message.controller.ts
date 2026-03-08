@@ -3,7 +3,7 @@ import pool from "../config/db.js";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 import { uploadChatFile } from "../services/cloudinary.service.js";
 import { getIO } from "../services/socket.service.js";
-
+import { encrypt, decrypt } from "../services/encryption.service.js";
 
 // =============================
 // POST /messages
@@ -41,11 +41,14 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // 🔐 CIFRAR MENSAJE
+    const encryptedContent = encrypt(content);
+
     const result = await pool.query(
       `SELECT mensajeria.send_message(
         $1,$2,$3,'text'
       ) AS id`,
-      [conversationId, senderId, content]
+      [conversationId, senderId, encryptedContent]
     );
 
     const messageId = result.rows[0].id;
@@ -54,7 +57,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       id: messageId,
       conversationId,
       sender_id: senderId,
-      content,
+      content, // ⚠️ enviamos texto plano al cliente
       message_type: "text",
       attachments: [],
       sent_at: new Date()
@@ -62,17 +65,13 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
 
     const io = getIO();
 
-    // obtener miembros
     const members = await pool.query(
-      `
-      SELECT user_id
-      FROM mensajeria.conversation_members
-      WHERE conversation_id=$1
-      `,
+      `SELECT user_id
+       FROM mensajeria.conversation_members
+       WHERE conversation_id=$1`,
       [conversationId]
     );
 
-    // enviar a rooms de usuario
     members.rows.forEach((m:any)=>{
 
       io.to(`user:${m.user_id}`).emit("new_message", message);
@@ -92,7 +91,6 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
   }
 
 };
-
 
 // =============================
 // GET /messages/:conversationId
@@ -176,7 +174,27 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       params
     );
 
-    return res.json(result.rows);
+    // 🔓 DESCIFRAR MENSAJES
+    const messages = result.rows.map((m:any)=>{
+
+      let decryptedContent = null;
+
+      if(m.content){
+        try{
+          decryptedContent = decrypt(m.content);
+        }catch{
+          decryptedContent = "[mensaje corrupto]";
+        }
+      }
+
+      return {
+        ...m,
+        content: decryptedContent
+      };
+
+    });
+
+    return res.json(messages);
 
   } catch (error) {
 
@@ -189,7 +207,6 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
   }
 
 };
-
 
 // =============================
 // POST /messages/read

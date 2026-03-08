@@ -5,7 +5,9 @@ import {
   me,
   changePassword,
   requestPasswordReset,
-  confirmPasswordReset
+  confirmPasswordReset,
+  requestRegisterCode,
+  requestPasswordChangeCode
 } from "../controllers/auth.controller.js";
 
 import { authenticate } from "../middlewares/auth.middleware.js";
@@ -22,5 +24,9 @@ router.patch("/password", authenticate, changePassword);
 router.post("/password-reset/request", requestPasswordReset);
 
 router.post("/password-reset/confirm", confirmPasswordReset);
+
+router.post("/register-code", requestRegisterCode);
+
+router.post("/password-code", requestPasswordChangeCode);
 
 export default router;

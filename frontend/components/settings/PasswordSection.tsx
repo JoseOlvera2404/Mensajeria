@@ -1,31 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import api from "@/src/services/api";
+
+import {
+  requestPasswordChangeCode,
+  changePassword
+} from "@/src/services/auth.service";
 
 export default function PasswordSection(){
 
-  const [currentPassword,setCurrentPassword] = useState("");
+  const [step,setStep] = useState(1);
+
   const [newPassword,setNewPassword] = useState("");
+  const [code,setCode] = useState("");
 
-  const changePassword = async ()=>{
+  const sendCode = async ()=>{
 
-    if(!currentPassword || !newPassword){
-      alert("Debes llenar ambos campos");
-      return;
-    }
+    await requestPasswordChangeCode();
+
+    alert("Código enviado a tu correo");
+
+    setStep(2);
+
+  };
+
+  const updatePassword = async ()=>{
 
     try{
 
-      await api.patch("/auth/password",{
-        currentPassword,
-        newPassword
+      await changePassword({
+        newPassword,
+        code
       });
 
       alert("Contraseña actualizada");
 
-      setCurrentPassword("");
       setNewPassword("");
+      setCode("");
+
+      setStep(1);
 
     }catch(err:any){
 
@@ -37,34 +50,53 @@ export default function PasswordSection(){
 
   return(
 
-    <div className="border rounded p-4 space-y-3">
+    <div className="border rounded p-4 space-y-4">
 
       <h2 className="font-semibold">
         Cambiar contraseña
       </h2>
 
-      <input
-        type="password"
-        placeholder="Contraseña actual"
-        value={currentPassword}
-        onChange={(e)=>setCurrentPassword(e.target.value)}
-        className="border p-2 rounded w-full"
-      />
+      {step === 1 && (
 
-      <input
-        type="password"
-        placeholder="Nueva contraseña"
-        value={newPassword}
-        onChange={(e)=>setNewPassword(e.target.value)}
-        className="border p-2 rounded w-full"
-      />
+        <button
+          onClick={sendCode}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Enviar código
+        </button>
 
-      <button
-        onClick={changePassword}
-        className="bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        Cambiar contraseña
-      </button>
+      )}
+
+      {step === 2 && (
+
+        <>
+
+          <input
+            type="text"
+            placeholder="Código"
+            value={code}
+            onChange={(e)=>setCode(e.target.value)}
+            className="border p-2 rounded w-full"
+          />
+
+          <input
+            type="password"
+            placeholder="Nueva contraseña"
+            value={newPassword}
+            onChange={(e)=>setNewPassword(e.target.value)}
+            className="border p-2 rounded w-full"
+          />
+
+          <button
+            onClick={updatePassword}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Confirmar cambio
+          </button>
+
+        </>
+
+      )}
 
     </div>
 

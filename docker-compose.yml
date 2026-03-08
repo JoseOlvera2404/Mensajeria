@@ -48,6 +48,8 @@ services:
       CLOUDINARY_CLOUD_NAME: dhen7qtci
       CLOUDINARY_API_KEY: 866177287498518
       CLOUDINARY_API_SECRET: geB7J4_WzbGIk9UtE_BXOatAG3I
+      RESEND_API_KEY: re_MuWqMuFd_2kGvdBYXSTifFNQVNRsFUKj5
+      EMAIL_FROM: authentification@joseolvera.com
 
     ports:
       - "4000:4000"
