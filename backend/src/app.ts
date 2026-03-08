@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import http from "http";
@@ -24,6 +24,7 @@ app.use(cors({
   origin: "*",
   credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -41,25 +42,56 @@ app.use("/api/messages", messageRoutes);
 // Health check
 // ============================
 
-app.get("/api/health", (req, res) => {
-  res.json({ message: "API funcionando correctamente con WebSockets" });
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.json({
+    message: "API funcionando correctamente con WebSockets"
+  });
 });
 
-app.get("/db-test", async (_req, res) => {
-  const result = await pool.query("SELECT NOW()");
-  res.json(result.rows);
+// ============================
+// DB test
+// ============================
+
+app.get("/db-test", async (_req: Request, res: Response) => {
+
+  try {
+
+    const result = await pool.query("SELECT NOW()");
+
+    res.json({
+      database: "connected",
+      time: result.rows[0]
+    });
+
+  } catch (error) {
+
+    console.error("DB connection error:", error);
+
+    res.status(500).json({
+      database: "error"
+    });
+
+  }
+
 });
 
 // ============================
 // HTTP SERVER + SOCKET.IO
 // ============================
 
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT) || 4000;
 
 const server = http.createServer(app);
 
+// Inicializar Socket.IO
 initSocket(server);
 
-server.listen(PORT, () => {
+// ============================
+// Start server
+// ============================
+
+server.listen(PORT, "0.0.0.0", () => {
+
   console.log(`Server running on port ${PORT}`);
+
 });
