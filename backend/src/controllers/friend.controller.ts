@@ -278,28 +278,30 @@ export const deleteFriend = async (req: AuthRequest, res: Response) => {
 
     const result = await pool.query(
       `DELETE FROM mensajeria.friendships
-       WHERE id=$1
-       AND (requester_id=$2 OR addressee_id=$2)
+       WHERE
+       (requester_id=$1 AND addressee_id=$2)
+       OR
+       (requester_id=$2 AND addressee_id=$1)
        RETURNING id`,
-      [id, userId]
+      [userId, id]
     );
 
-    if (result.rows.length === 0) {
+    if(result.rows.length === 0){
       return res.status(404).json({
-        message: "Relación no encontrada"
+        message:"Amistad no encontrada"
       });
     }
 
     return res.json({
-      message: "Amistad eliminada"
+      message:"Amigo eliminado"
     });
 
-  } catch (error) {
+  } catch(error){
 
     console.error(error);
 
     return res.status(500).json({
-      message: "Error interno del servidor"
+      message:"Error interno del servidor"
     });
 
   }
@@ -384,6 +386,100 @@ export const unblockUser = async (req: AuthRequest, res: Response) => {
 
     return res.status(500).json({
       message: "Error interno del servidor"
+    });
+
+  }
+
+};
+
+// =============================
+// GET /friends/status/:userId
+// =============================
+export const getFriendStatus = async (req: AuthRequest, res: Response) => {
+
+  try {
+
+    const requesterId = req.userId;
+    const { userId } = req.params;
+
+    if (!requesterId) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId requerido" });
+    }
+
+    const result = await pool.query(
+      `SELECT status
+       FROM mensajeria.friendships
+       WHERE
+       (requester_id=$1 AND addressee_id=$2)
+       OR
+       (requester_id=$2 AND addressee_id=$1)
+       LIMIT 1`,
+      [requesterId, userId]
+    );
+
+    if (result.rows.length === 0) {
+
+      return res.json({
+        status: "none"
+      });
+
+    }
+
+    return res.json({
+      status: result.rows[0].status
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Error interno del servidor"
+    });
+
+  }
+
+};
+
+// =============================
+// POST /friends/reject
+// =============================
+export const rejectFriendRequest = async (req: AuthRequest, res: Response) => {
+
+  try {
+
+    const userId = req.userId;
+    const { requestId } = req.body;
+
+    const result = await pool.query(
+      `DELETE FROM mensajeria.friendships
+       WHERE id=$1
+       AND addressee_id=$2
+       AND status='pending'
+       RETURNING id`,
+      [requestId, userId]
+    );
+
+    if(result.rows.length === 0){
+      return res.status(404).json({
+        message:"Solicitud no encontrada"
+      });
+    }
+
+    return res.json({
+      message:"Solicitud rechazada"
+    });
+
+  } catch (error){
+
+    console.error(error);
+
+    return res.status(500).json({
+      message:"Error interno del servidor"
     });
 
   }

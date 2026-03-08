@@ -93,6 +93,13 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
   try {
 
     const { q } = req.query;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "No autorizado"
+      });
+    }
 
     if (!q || typeof q !== "string") {
       return res.status(400).json({
@@ -104,8 +111,9 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
       `SELECT id, public_code, name, profile_picture_url
        FROM mensajeria.users
        WHERE name ILIKE '%' || $1 || '%'
+       AND id <> $2
        LIMIT 20`,
-      [q]
+      [q, userId]
     );
 
     const users = result.rows.map((user) => ({
@@ -122,9 +130,9 @@ export const searchUsers = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       message: "Error interno del servidor"
     });
+
   }
 };
-
 
 // =============================
 // PATCH /users/profile

@@ -26,10 +26,12 @@ export const initSocket = (server: any) => {
     // =========================
     // REGISTER USER
     // =========================
-
     socket.on("register_user", (userId: string) => {
 
       userConnected(userId, socket.id);
+
+      // room personal
+      socket.join(`user:${userId}`);
 
       io.emit("user_online", { userId });
 
@@ -39,12 +41,13 @@ export const initSocket = (server: any) => {
     // JOIN CONVERSATION
     // =========================
 
-    socket.on("join_conversation", (conversationId: string) => {
-      socket.join(conversationId);
+    socket.on("join_conversation",(conversationId)=>{
+      console.log("JOIN ROOM",conversationId);
+      socket.join(`conversation:${conversationId}`);
     });
 
     socket.on("leave_conversation", (conversationId: string) => {
-      socket.leave(conversationId);
+      socket.leave(`conversation:${conversationId}`);
     });
 
     // =========================
@@ -59,7 +62,7 @@ export const initSocket = (server: any) => {
 
       typingUsers.get(conversationId)!.add(userId);
 
-      io.to(conversationId).emit("typing_users", {
+      io.to(`conversation:${conversationId}`).emit("typing_users", {
         conversationId,
         users: Array.from(typingUsers.get(conversationId)!)
       });
@@ -76,7 +79,7 @@ export const initSocket = (server: any) => {
 
       typingUsers.get(conversationId)!.delete(userId);
 
-      io.to(conversationId).emit("typing_users", {
+      io.to(`conversation:${conversationId}`).emit("typing_users", {
         conversationId,
         users: Array.from(typingUsers.get(conversationId)!)
       });
@@ -89,7 +92,7 @@ export const initSocket = (server: any) => {
 
     socket.on("message_delivered", ({ conversationId, messageId, userId }) => {
 
-      socket.to(conversationId).emit("message_delivered", {
+      socket.to(`conversation:${conversationId}`).emit("message_delivered", {
         messageId,
         userId
       });
@@ -121,9 +124,10 @@ export const initSocket = (server: any) => {
           [messageId, conversationId, userId]
         );
 
-        socket.to(conversationId).emit("message_seen", {
+        socket.to(`conversation:${conversationId}`).emit("message_seen", {
           messageId,
-          userId
+          userId,
+          conversationId
         });
 
       } catch (error) {

@@ -2,8 +2,8 @@ import { Response } from "express";
 import pool from "../config/db.js";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 import { uploadChatFile } from "../services/cloudinary.service.js";
-import {getIO } from "../services/socket.service.js";
-
+import { getIO } from "../services/socket.service.js";
+import { encrypt, decrypt } from "../services/encryption.service.js";
 
 // =============================
 // POST /messages
@@ -41,32 +41,44 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // 🔐 CIFRAR MENSAJE
+    const encryptedContent = encrypt(content);
+
     const result = await pool.query(
       `SELECT mensajeria.send_message(
         $1,$2,$3,'text'
       ) AS id`,
-      [conversationId, senderId, content]
+      [conversationId, senderId, encryptedContent]
     );
 
     const messageId = result.rows[0].id;
 
-    // ==========================
-    // WEBSOCKET EVENT
-    // ==========================
+    const message = {
+      id: messageId,
+      conversationId,
+      sender_id: senderId,
+      content, // ⚠️ enviamos texto plano al cliente
+      message_type: "text",
+      attachments: [],
+      sent_at: new Date()
+    };
 
     const io = getIO();
 
-    io.to(conversationId).emit("new_message", {
-      messageId,
-      conversationId,
-      senderId,
-      content,
-      messageType: "text"
+    const members = await pool.query(
+      `SELECT user_id
+       FROM mensajeria.conversation_members
+       WHERE conversation_id=$1`,
+      [conversationId]
+    );
+
+    members.rows.forEach((m:any)=>{
+
+      io.to(`user:${m.user_id}`).emit("new_message", message);
+
     });
 
-    return res.json({
-      messageId
-    });
+    return res.json(message);
 
   } catch (error) {
 
@@ -79,7 +91,6 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
   }
 
 };
-
 
 // =============================
 // GET /messages/:conversationId
@@ -118,6 +129,7 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       `
       SELECT
         m.id,
+        m.conversation_id,
         m.content,
         m.message_type,
         m.sent_at,
@@ -162,7 +174,27 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       params
     );
 
-    return res.json(result.rows);
+    // 🔓 DESCIFRAR MENSAJES
+    const messages = result.rows.map((m:any)=>{
+
+      let decryptedContent = null;
+
+      if(m.content){
+        try{
+          decryptedContent = decrypt(m.content);
+        }catch{
+          decryptedContent = "[mensaje corrupto]";
+        }
+      }
+
+      return {
+        ...m,
+        content: decryptedContent
+      };
+
+    });
+
+    return res.json(messages);
 
   } catch (error) {
 
@@ -175,7 +207,6 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
   }
 
 };
-
 
 // =============================
 // POST /messages/read
@@ -214,9 +245,10 @@ export const markMessagesAsRead = async (req: AuthRequest, res: Response) => {
 
       const io = getIO();
 
-      io.to(conversationId).emit("message_seen", {
+      io.to(`conversation:${conversationId}`).emit("message_seen", {
         messageId,
-        userId
+        userId,
+        conversationId
       });
 
     }
@@ -264,15 +296,9 @@ export const sendFileMessage = async (req: AuthRequest, res: Response) => {
 
     let messageType: "image" | "video" | "audio" | "file" = "file";
 
-    if (mimetype.startsWith("image/")) {
-      messageType = "image";
-    } 
-    else if (mimetype.startsWith("video/")) {
-      messageType = "video";
-    }
-    else if (mimetype.startsWith("audio/")) {
-      messageType = "audio";
-    }
+    if (mimetype.startsWith("image/")) messageType = "image";
+    else if (mimetype.startsWith("video/")) messageType = "video";
+    else if (mimetype.startsWith("audio/")) messageType = "audio";
 
     const upload = await uploadChatFile(req.file.buffer);
 
@@ -299,30 +325,36 @@ export const sendFileMessage = async (req: AuthRequest, res: Response) => {
       ]
     );
 
-    // ==========================
-    // WEBSOCKET EVENT
-    // ==========================
-
     const io = getIO();
 
-    io.to(conversationId).emit("new_message", {
-      messageId,
+    const payload = {
+      id: messageId,
       conversationId,
-      senderId,
-      messageType,
-      fileUrl: upload.secure_url,
-      thumbnailUrl: upload.thumbnail_url,
-      previewUrl: upload.preview_url
+      sender_id: senderId,
+      message_type: messageType,
+      attachments:[
+        {
+          file_url: upload.secure_url,
+          file_type: req.file.mimetype
+        }
+      ],
+      sent_at: new Date()
+    };
+
+    const members = await pool.query(
+      `
+      SELECT user_id
+      FROM mensajeria.conversation_members
+      WHERE conversation_id=$1
+      `,
+      [conversationId]
+    );
+
+    members.rows.forEach((m:any)=>{
+      io.to(`user:${m.user_id}`).emit("new_message", payload);
     });
 
-    return res.json({
-      message: "Archivo enviado",
-      messageId,
-      messageType,
-      fileUrl: upload.secure_url,
-      thumbnailUrl: upload.thumbnail_url,
-      previewUrl: upload.preview_url
-    });
+    return res.json(payload);
 
   } catch (error) {
 

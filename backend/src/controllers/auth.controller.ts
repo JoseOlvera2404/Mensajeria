@@ -3,46 +3,110 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import pool from "../config/db.js";
 import crypto from "crypto";
+import { sendVerificationCode } from "../services/email.service.js";
 
+const generateCode = () => {
+  return crypto.randomInt(100000,999999).toString();
+};
 
 // REGISTRO
 export const register = async (req: Request, res: Response) => {
+
   try {
 
-    const { name, email, password } = req.body;
+    const { name, email, password, code } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Faltan datos obligatorios" });
+    if(!name || !email || !password || !code){
+      return res.status(400).json({
+        message:"Faltan datos"
+      });
     }
 
-    const existingUser = await pool.query(
-      "SELECT id FROM mensajeria.users WHERE email = $1",
-      [email]
+    const codeResult = await pool.query(
+      `SELECT *
+       FROM mensajeria.email_codes
+       WHERE email=$1
+       AND code=$2
+       AND used=false
+       AND expires_at > NOW()
+       ORDER BY expires_at DESC
+       LIMIT 1`,
+      [email, code]
     );
 
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ message: "El correo ya está registrado" });
+    if(codeResult.rows.length === 0){
+      return res.status(400).json({
+        message:"Código inválido"
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password,10);
 
     const result = await pool.query(
-      `INSERT INTO mensajeria.users 
-       (name, email, password_hash)
-       VALUES ($1, $2, $3)
-       RETURNING id, public_code, name, email`,
-      [name, email, hashedPassword]
+      `INSERT INTO mensajeria.users
+       (name,email,password_hash)
+       VALUES ($1,$2,$3)
+       RETURNING id,public_code,name,email`,
+      [name,email,hashedPassword]
+    );
+
+    await pool.query(
+      `UPDATE mensajeria.email_codes
+       SET used=true
+       WHERE id=$1`,
+      [codeResult.rows[0].id]
     );
 
     return res.status(201).json({
-      message: "Usuario creado correctamente",
-      user: result.rows[0],
+      message:"Usuario creado",
+      user:result.rows[0]
+    });
+
+  } catch(error){
+
+    console.error(error);
+
+    return res.status(500).json({
+      message:"Error interno"
+    });
+
+  }
+
+};
+
+export const requestRegisterCode = async (req: Request, res: Response) => {
+
+  try {
+
+    const { email } = req.body;
+
+    const code = generateCode();
+
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO mensajeria.email_codes
+       (email, code, expires_at)
+       VALUES ($1,$2,$3)`,
+      [email, code, expires]
+    );
+
+    await sendVerificationCode(email, code);
+
+    return res.json({
+      message: "Código enviado"
     });
 
   } catch (error) {
+
     console.error(error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+
+    return res.status(500).json({
+      message: "Error enviando código"
+    });
+
   }
+
 };
 
 
@@ -151,57 +215,73 @@ export const me = async (req: Request, res: Response) => {
 
 // CHANGE PASSWORD
 export const changePassword = async (req: Request, res: Response) => {
+
   try {
 
     const userId = getUserIdFromToken(req);
 
-    if (!userId) {
-      return res.status(401).json({ message: "Token inválido" });
-    }
+    const { newPassword, code } = req.body;
 
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: "Faltan datos" });
-    }
-
-    const result = await pool.query(
-      `SELECT password_hash
-       FROM mensajeria.users
-       WHERE id = $1`,
+    const user = await pool.query(
+      `SELECT email FROM mensajeria.users WHERE id=$1`,
       [userId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
+    if(user.rows.length === 0){
+      return res.status(404).json({
+        message:"Usuario no encontrado"
+      });
     }
 
-    const user = result.rows[0];
+    const email = user.rows[0].email;
 
-    const validPassword = await bcrypt.compare(
-      currentPassword,
-      user.password_hash
+    const codeResult = await pool.query(
+      `SELECT *
+       FROM mensajeria.email_codes
+       WHERE email=$1
+       AND code=$2
+       AND used=false
+       AND expires_at > NOW()
+       LIMIT 1`,
+      [email,code]
     );
 
-    if (!validPassword) {
-      return res.status(400).json({ message: "Contraseña incorrecta" });
+    if(codeResult.rows.length === 0){
+      return res.status(400).json({
+        message:"Código inválido"
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashed = await bcrypt.hash(newPassword,10);
 
     await pool.query(
       `UPDATE mensajeria.users
-       SET password_hash = $1
-       WHERE id = $2`,
-      [hashedPassword, userId]
+       SET password_hash=$1
+       WHERE id=$2`,
+      [hashed,userId]
     );
 
-    return res.json({ message: "Contraseña actualizada" });
+    await pool.query(
+      `UPDATE mensajeria.email_codes
+       SET used=true
+       WHERE id=$1`,
+      [codeResult.rows[0].id]
+    );
 
-  } catch (error) {
+    return res.json({
+      message:"Contraseña actualizada"
+    });
+
+  } catch(error){
+
     console.error(error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+
+    return res.status(500).json({
+      message:"Error interno"
+    });
+
   }
+
 };
 
 
@@ -246,6 +326,47 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
   }
 };
 
+export const requestPasswordChangeCode = async (req: Request, res: Response) => {
+
+  try {
+
+    const userId = getUserIdFromToken(req);
+
+    const user = await pool.query(
+      `SELECT email FROM mensajeria.users WHERE id=$1`,
+      [userId]
+    );
+
+    const email = user.rows[0].email;
+
+    const code = generateCode();
+
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO mensajeria.email_codes
+       (email,code,expires_at)
+       VALUES ($1,$2,$3)`,
+      [email,code,expires]
+    );
+
+    await sendVerificationCode(email,code);
+
+    return res.json({
+      message:"Código enviado"
+    });
+
+  } catch(error){
+
+    console.error(error);
+
+    return res.status(500).json({
+      message:"Error enviando código"
+    });
+
+  }
+
+};
 
 // CONFIRM PASSWORD RESET
 export const confirmPasswordReset = async (req: Request, res: Response) => {
