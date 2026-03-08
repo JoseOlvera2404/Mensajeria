@@ -1,17 +1,16 @@
 import jwt from "jsonwebtoken";
-const authMiddleware = (req, res, next) => {
+export const authenticate = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ message: "Token requerido" });
+    }
+    const token = authHeader.split(" ")[1];
     try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader) {
-            return res.status(401).json({ message: "No autorizado" });
-        }
-        const token = authHeader.split(" ")[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+        req.userId = decoded.userId;
         next();
     }
-    catch (error) {
-        return res.status(401).json({ message: "Token inválido o expirado" });
+    catch {
+        return res.status(401).json({ message: "Token inválido" });
     }
 };
-export default authMiddleware;
