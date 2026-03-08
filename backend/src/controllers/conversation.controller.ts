@@ -174,6 +174,11 @@ export const getUserConversations = async (req: AuthRequest, res: Response) => {
           ELSE c.name
         END AS name,
 
+        CASE
+          WHEN c.type='private' THEN other_user.profile_picture_url
+          ELSE NULL
+        END AS avatar,
+
         c.created_at,
 
         lm.content AS last_message,

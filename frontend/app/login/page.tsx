@@ -1,19 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { loginUser } from "@/src/services/auth.service";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/src/context/AuthContext";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 
 export default function LoginPage() {
 
   const router = useRouter();
+  const { login, user } = useAuth();
 
   const [email,setEmail] = useState("");
   const [password,setPassword] = useState("");
+  const [error,setError] = useState("");
+
+  useEffect(() => {
+
+    if(user){
+      router.push("/dashboard");
+    }
+
+  },[user,router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
 
     e.preventDefault();
+    setError("");
 
     try {
 
@@ -22,44 +39,80 @@ export default function LoginPage() {
         password
       });
 
-      localStorage.setItem("token",data.token);
+      login(data.token);
 
       router.push("/dashboard");
 
-    } catch (err) {
-      console.error(err);
-      alert("Credenciales inválidas");
+    } catch {
+
+      setError("Credenciales inválidas");
+
     }
 
   };
 
   return (
-    <div style={{maxWidth:400,margin:"100px auto"}}>
 
-      <h2>Login</h2>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
 
-      <form onSubmit={handleSubmit}>
+      <Card className="w-96 p-6 space-y-5">
 
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e)=>setEmail(e.target.value)}
-        />
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl font-bold">
+            Iniciar sesión
+          </h1>
 
-        <input
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e)=>setPassword(e.target.value)}
-        />
+          <p className="text-sm text-gray-500">
+            Accede a tu cuenta para comenzar a chatear
+          </p>
+        </div>
 
-        <button type="submit">
-          Iniciar sesión
-        </button>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
 
-      </form>
+          <Input
+            placeholder="Email"
+            value={email}
+            onChange={(e)=>setEmail(e.target.value)}
+          />
+
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e)=>setPassword(e.target.value)}
+          />
+
+          {error && (
+            <p className="text-sm text-red-500 text-center">
+              {error}
+            </p>
+          )}
+
+          <Button className="w-full">
+            Iniciar sesión
+          </Button>
+
+        </form>
+
+        <p className="text-sm text-center text-gray-600">
+
+          ¿No tienes cuenta?{" "}
+          <Link
+            href="/register"
+            className="text-blue-600 hover:underline"
+          >
+            Regístrate
+          </Link>
+
+        </p>
+
+      </Card>
 
     </div>
+
   );
 
 }

@@ -1,26 +1,35 @@
 "use client";
 
+import { useAuth } from "@/src/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import ChatLayout from "@/components/chat/ChatLayout";
+
 export default function DashboardPage(){
 
-  return(
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-    <div>
+  useEffect(() => {
 
-      <h1>Chat Dashboard</h1>
+    if(!loading && !user){
+      router.push("/login");
+    }
 
-      <p>Usuario logueado</p>
-      
-      <button onClick={()=>{
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-      }}>
-        Cerrar sesión
-      </button>
+  }, [user, loading, router]);
 
-      <p>Nuevo cambio</p>
+  if(loading){
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-gray-500">Cargando...</p>
+      </div>
+    )
+  }
 
-    </div>
+  if(!user){
+    return null;
+  }
 
-  )
+  return <ChatLayout/>;
 
 }
