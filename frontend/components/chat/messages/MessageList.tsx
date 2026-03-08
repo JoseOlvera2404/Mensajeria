@@ -7,6 +7,7 @@ import { useChat } from "@/src/context/ChatContext";
 import { getMessages } from "@/src/services/message.service";
 import { getSocket } from "@/src/services/socket.service";
 import { markMessagesAsRead } from "@/src/services/message.service";
+import { useAuth } from "@/src/context/AuthContext";
 
 export default function MessageList(){
 
@@ -24,6 +25,8 @@ export default function MessageList(){
 
   const socketRef = useRef<any>(null);
 
+  const { user } = useAuth();
+
   // mantener conversación actual en ref
   useEffect(()=>{
     activeConversationRef.current = activeConversation;
@@ -35,6 +38,10 @@ export default function MessageList(){
   useEffect(()=>{
 
     if(!activeConversation) return;
+
+    const socket = getSocket();
+
+    socket.emit("join_conversation", activeConversation.id);
 
     const loadMessages = async () => {
 
@@ -58,6 +65,10 @@ export default function MessageList(){
     };
 
     loadMessages();
+
+    return ()=>{
+      socket.emit("leave_conversation", activeConversation.id);
+    };
 
   },[activeConversation]);
 
@@ -84,11 +95,15 @@ export default function MessageList(){
 
         addMessage(msg);
 
-        // AUTO MARK AS READ
-        await markMessagesAsRead({
-          messageId:msg.id,
-          conversationId:currentConversation.id
-        });
+        // solo marcar leído si el mensaje NO es mío
+        if(msg.sender_id !== user?.id){
+
+          await markMessagesAsRead({
+            messageId:msg.id,
+            conversationId:currentConversation.id
+          });
+
+        }
 
       }
 
@@ -99,6 +114,12 @@ export default function MessageList(){
     // ===============================
 
     const handleSeen = (data:any)=>{
+
+      const currentConversation = activeConversationRef.current;
+
+      if(!currentConversation) return;
+
+      if(String(data.conversationId) !== String(currentConversation.id)) return;
 
       markMessageSeen(data.messageId,data.userId);
 
