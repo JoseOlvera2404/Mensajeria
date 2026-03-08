@@ -64,6 +64,18 @@ export default function MessageBubble({ message }: any) {
             />
           )}
 
+          {attachment && !attachment.file_type?.startsWith("image") && (
+
+            <a
+              href={attachment.file_url}
+              target="_blank"
+              className="text-sm underline"
+            >
+              Descargar archivo
+            </a>
+
+          )}
+
         </div>
 
         {mine && (
