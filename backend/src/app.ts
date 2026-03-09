@@ -90,16 +90,30 @@ app.get("/", (_req, res) => {
 // HTTP SERVER + SOCKET.IO
 // ============================
 
-const PORT = Number(process.env.PORT) || 4000;
+const PORT = Number(process.env.PORT) || 8080;
 
-const server = http.createServer(app);
+const startServer = async () => {
+  try {
 
-// Inicializar Socket.IO
-initSocket(server);
+    // probar conexión DB
+    await pool.query("SELECT 1");
 
-// ============================
-// Start server
-// ============================
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-});
+    console.log("Database connected");
+
+    const server = http.createServer(app);
+
+    initSocket(server);
+
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  } catch (error) {
+
+    console.error("Startup error:", error);
+    process.exit(1);
+
+  }
+};
+
+startServer();
