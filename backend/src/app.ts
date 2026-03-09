@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import http from "http";
 import pool from "./config/db.js";
 
+console.log("Starting backend...");
+
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import friendRoutes from "./routes/friend.routes.js";
@@ -13,6 +15,11 @@ import messageRoutes from "./routes/message.routes.js";
 import { initSocket } from "./services/socket.service.js";
 
 dotenv.config();
+
+console.log(
+  "DATABASE_URL:",
+  process.env.DATABASE_URL ? "OK" : "MISSING"
+);
 
 const app = express();
 
@@ -93,6 +100,6 @@ initSocket(server);
 // ============================
 // Start server
 // ============================
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
