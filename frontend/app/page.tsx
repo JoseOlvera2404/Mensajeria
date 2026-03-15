@@ -53,7 +53,13 @@ export default function Home() {
             basada en microservicios.
           </p>
 
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4" flex-wrap>
+
+            <a href="/downloads/chatapp.apk" download>
+              <Button size="lg" variant="secondary">
+                Descargar APK
+              </Button>
+            </a>
 
             <Link href="/register">
               <Button size="lg">
