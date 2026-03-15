@@ -73,9 +73,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       [conversationId]
     );
 
-    members.rows.forEach((m:any)=>{
-      io.to(`user:${m.user_id}`).emit("new_message", message);
-    });
+    io.to(`conversation:${conversationId}`).emit("new_message", message);
 
     // =============================
     // RESPUESTA DEL CHATBOT
@@ -116,9 +114,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
           sent_at: new Date()
         };
 
-        members.rows.forEach((m:any)=>{
-          io.to(`user:${m.user_id}`).emit("new_message", botPayload);
-        });
+        io.to(`conversation:${conversationId}`).emit("new_message", botPayload);
 
       }
 
@@ -398,9 +394,7 @@ export const sendFileMessage = async (req: AuthRequest, res: Response) => {
       [conversationId]
     );
 
-    members.rows.forEach((m:any)=>{
-      io.to(`user:${m.user_id}`).emit("new_message", payload);
-    });
+    io.to(`conversation:${conversationId}`).emit("new_message", payload);
 
     return res.json(payload);
 
