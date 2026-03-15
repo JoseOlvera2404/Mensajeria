@@ -123,7 +123,10 @@ export default function MessageList(){
 
       if(String(convId) === String(currentConversation.id)){
 
-        addMessage(msg);
+        addMessage({
+          ...msg,
+          id: msg.id ?? msg.tempId
+        });
 
         // solo marcar leído si el mensaje NO es mío
         if(msg.sender_id !== user?.id){

@@ -25,31 +25,29 @@ export const ChatProvider = ({children}:{children:React.ReactNode}) => {
 
     setMessages(prev => {
 
-      if(message.id){
+      // evitar duplicados
+      if(prev.some(m => m.id === message.id)){
+        return prev;
+      }
 
-        const optimisticIndex = prev.findIndex(
-          m =>
-            m.tempId &&
-            m.content === message.content &&
-            m.sender_id === message.sender_id
-        );
+      // reemplazar mensaje optimista
+      const optimisticIndex = prev.findIndex(
+        m =>
+          m.id?.startsWith("temp_") &&
+          m.content === message.content &&
+          m.sender_id === message.sender_id
+      );
 
-        if(optimisticIndex !== -1){
+      if(optimisticIndex !== -1){
 
-          const updated = [...prev];
-          updated[optimisticIndex] = message;
+        const updated = [...prev];
+        updated[optimisticIndex] = message;
 
-          return updated;
-
-        }
+        return updated;
 
       }
 
-      const exists = prev.some(m => m.id === message.id);
-
-      if(exists) return prev;
-
-      return [...prev,message];
+      return [...prev, message];
 
     });
 
