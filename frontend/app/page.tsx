@@ -55,7 +55,7 @@ export default function Home() {
 
           <div className="flex justify-center gap-4" flex-wrap>
 
-            <a href="/downloads/chatapp.apk" download>
+            <a href="/downloads/ChatApp.apk" download>
               <Button size="lg" variant="secondary">
                 Descargar APK
               </Button>
