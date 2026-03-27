@@ -455,3 +455,170 @@ export const confirmPasswordReset = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
+export const generateBiometricChallenge = async (req: Request, res: Response) => {
+  try {
+
+    const userId = getUserIdFromToken(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: "Token inválido" });
+    }
+
+    const challenge = crypto.randomBytes(32).toString("hex");
+
+    // almacenamiento simple (para práctica)
+    (global as any).biometricChallenges = (global as any).biometricChallenges || {};
+    (global as any).biometricChallenges[userId] = challenge;
+
+    return res.json({ challenge });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Error generando challenge"
+    });
+
+  }
+};
+
+export const registerBiometric = async (req: Request, res: Response) => {
+
+  try {
+
+    const userId = getUserIdFromToken(req);
+
+    if (!userId) {
+      return res.status(401).json({ message: "Token inválido" });
+    }
+
+    const { publicKey, credentialId } = req.body;
+
+    if (!publicKey || !credentialId) {
+      return res.status(400).json({
+        message: "Faltan datos"
+      });
+    }
+
+    await pool.query(
+      `INSERT INTO mensajeria.webauthn_credentials
+       (user_id, public_key, credential_id)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (credential_id) DO NOTHING`,
+      [userId, publicKey, credentialId]
+    );
+
+    return res.json({
+      message: "Biometría registrada correctamente"
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Error registrando biometría"
+    });
+
+  }
+
+};
+
+export const biometricLogin = async (req: Request, res: Response) => {
+
+  try {
+
+    const { email, signature, credentialId } = req.body;
+
+    if (!email || !signature || !credentialId) {
+      return res.status(400).json({
+        message: "Faltan datos"
+      });
+    }
+
+    // 1. Obtener usuario
+    const userResult = await pool.query(
+      `SELECT id, is_active FROM mensajeria.users WHERE email=$1`,
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({
+        message: "Usuario no encontrado"
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    if (!user.is_active) {
+      return res.status(403).json({
+        message: "Cuenta desactivada"
+      });
+    }
+
+    // 2. Obtener credencial
+    const credResult = await pool.query(
+      `SELECT public_key
+       FROM mensajeria.webauthn_credentials
+       WHERE user_id=$1 AND credential_id=$2`,
+      [user.id, credentialId]
+    );
+
+    if (credResult.rows.length === 0) {
+      return res.status(401).json({
+        message: "Credencial no válida"
+      });
+    }
+
+    const publicKey = credResult.rows[0].public_key;
+
+    // 3. Obtener challenge
+    const challenge = (global as any).biometricChallenges?.[user.id];
+
+    if (!challenge) {
+      return res.status(400).json({
+        message: "Challenge no encontrado"
+      });
+    }
+
+    // 4. Verificar firma
+    const verify = crypto.createVerify("SHA256");
+    verify.update(challenge);
+    verify.end();
+
+    const isValid = verify.verify(
+      publicKey,
+      Buffer.from(signature, "base64")
+    );
+
+    if (!isValid) {
+      return res.status(401).json({
+        message: "Biometría inválida"
+      });
+    }
+
+    // 5. Generar token
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET as string,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      message: "Login biométrico exitoso",
+      token
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Error en login biométrico"
+    });
+
+  }
+
+};

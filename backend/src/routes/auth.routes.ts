@@ -7,7 +7,10 @@ import {
   requestPasswordReset,
   confirmPasswordReset,
   requestRegisterCode,
-  requestPasswordChangeCode
+  requestPasswordChangeCode,
+  generateBiometricChallenge,
+  registerBiometric,
+  biometricLogin
 } from "../controllers/auth.controller.js";
 
 import { authenticate } from "../middlewares/auth.middleware.js";
@@ -29,4 +32,9 @@ router.post("/register-code", requestRegisterCode);
 
 router.post("/password-code", requestPasswordChangeCode);
 
+router.get("/biometric/challenge", authenticate, generateBiometricChallenge);
+
+router.post("/biometric/register", authenticate, registerBiometric);
+
+router.post("/biometric/login", biometricLogin);
 export default router;
