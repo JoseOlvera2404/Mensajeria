@@ -459,16 +459,35 @@ export const confirmPasswordReset = async (req: Request, res: Response) => {
 export const generateBiometricChallenge = async (req: Request, res: Response) => {
   try {
 
-    const userId = getUserIdFromToken(req);
+    const { email } = req.query;
 
-    if (!userId) {
-      return res.status(401).json({ message: "Token inválido" });
+    if (!email) {
+      return res.status(400).json({
+        message: "Email requerido"
+      });
     }
 
+    // 1. Buscar usuario
+    const userResult = await pool.query(
+      `SELECT id FROM mensajeria.users WHERE email=$1`,
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({
+        message: "Usuario no encontrado"
+      });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // 2. Generar challenge
     const challenge = crypto.randomBytes(32).toString("hex");
 
-    // almacenamiento simple (para práctica)
-    (global as any).biometricChallenges = (global as any).biometricChallenges || {};
+    // 3. Guardarlo temporalmente
+    (global as any).biometricChallenges =
+      (global as any).biometricChallenges || {};
+
     (global as any).biometricChallenges[userId] = challenge;
 
     return res.json({ challenge });
