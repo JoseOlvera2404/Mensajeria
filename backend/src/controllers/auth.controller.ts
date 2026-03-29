@@ -610,7 +610,7 @@ ${formattedKey}
     // 4. Verificación
     const verify = crypto.createVerify("RSA-SHA256");
 
-    verify.update(Buffer.from(challenge, "hex"));
+    verify.update(Buffer.from(challenge, "utf-8"));
     verify.end();
 
     const isValid = verify.verify(
