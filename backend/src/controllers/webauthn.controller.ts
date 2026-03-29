@@ -8,6 +8,8 @@ import {
   verifyAuthenticationResponse
 } from "@simplewebauthn/server";
 
+import jwt from "jsonwebtoken";
+
 const rpID = process.env.RP_ID!;
 const origin = process.env.ORIGIN!;
 
@@ -198,9 +200,9 @@ export const loginVerify = async (req: Request, res: Response) => {
       [verification.authenticationInfo.newCounter, userId]
     );
 
-    const token = require("jsonwebtoken").sign(
+    const token = jwt.sign(
       { userId },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET!,
       { expiresIn: "7d" }
     );
 
