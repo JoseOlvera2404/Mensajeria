@@ -587,15 +587,16 @@ export const biometricLogin = async (req: Request, res: Response) => {
 
     const rawKey = credResult.rows[0].public_key;
 
-    // 🔥 FIX REAL: FORMATEAR A PEM CORRECTAMENTE (64 chars por línea)
-    const formattedKey = rawKey
-      .replace(/\s+/g, "")
-      .match(/.{1,64}/g)
-      ?.join("\n");
+    // 🔥 LIMPIAR DATOS
+    const cleanKey = rawKey.replace(/\s+/g, "");
+    const cleanSignature = signature.replace(/\s+/g, "");
 
-    const publicKey = `-----BEGIN PUBLIC KEY-----
-${formattedKey}
------END PUBLIC KEY-----`;
+    // 🔥 CLAVE PUBLICA DESDE DER (CORRECTO PARA ANDROID)
+    const publicKey = crypto.createPublicKey({
+      key: Buffer.from(cleanKey, "base64"),
+      format: "der",
+      type: "spki"
+    });
 
     // 3. Challenge
     const challenge = (global as any).biometricChallenges?.[user.id];
@@ -604,16 +605,10 @@ ${formattedKey}
       return res.status(400).json({ message: "Challenge no encontrado" });
     }
 
-    // 🔥 FIX: limpiar signature (Android mete saltos de línea)
-    const cleanSignature = signature.replace(/\s+/g, "");
-
-    // 4. Verificación
-    const verify = crypto.createVerify("RSA-SHA256");
-
-    verify.update(Buffer.from(challenge, "utf-8"));
-    verify.end();
-
-    const isValid = verify.verify(
+    // 🔥 VERIFY CORRECTO
+    const isValid = crypto.verify(
+      "RSA-SHA256",
+      Buffer.from(challenge, "utf-8"),
       publicKey,
       Buffer.from(cleanSignature, "base64")
     );
@@ -622,7 +617,7 @@ ${formattedKey}
       return res.status(401).json({ message: "Biometría inválida" });
     }
 
-    // 5. Token
+    // 4. Token
     const token = jwt.sign(
       { userId: user.id },
       process.env.JWT_SECRET as string,
