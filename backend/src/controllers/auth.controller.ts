@@ -587,10 +587,10 @@ export const biometricLogin = async (req: Request, res: Response) => {
 
     const rawKey = credResult.rows[0].public_key;
 
-    // 🔥 FIX REAL
-    const cleanKey = rawKey.replace(/\s+/g, "");
-
-    const publicKey = `-----BEGIN PUBLIC KEY-----\n${cleanKey}\n-----END PUBLIC KEY-----`;
+    // ✅ FIX 1: NO limpiar espacios (esto rompía la key)
+    const publicKey = `-----BEGIN PUBLIC KEY-----
+${rawKey}
+-----END PUBLIC KEY-----`;
 
     // 3. Challenge
     const challenge = (global as any).biometricChallenges?.[user.id];
@@ -599,15 +599,18 @@ export const biometricLogin = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Challenge no encontrado" });
     }
 
-    // 4. Verificar firma
+    // ✅ FIX 2: limpiar signature (Android mete saltos de línea)
+    const cleanSignature = signature.replace(/\s+/g, "");
+
+    // 4. Verificación
     const verify = crypto.createVerify("RSA-SHA256");
 
-    verify.update(Buffer.from(challenge, "utf-8")); // 🔥 FIX
+    verify.update(Buffer.from(challenge, "utf-8"));
     verify.end();
 
     const isValid = verify.verify(
       publicKey,
-      Buffer.from(signature, "base64")
+      Buffer.from(cleanSignature, "base64")
     );
 
     if (!isValid) {
