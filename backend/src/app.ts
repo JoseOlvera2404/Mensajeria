@@ -11,6 +11,7 @@ import userRoutes from "./routes/user.routes.js";
 import friendRoutes from "./routes/friend.routes.js";
 import conversationRoutes from "./routes/conversation.routes.js";
 import messageRoutes from "./routes/message.routes.js";
+import webauthnRoutes from "./routes/webauthn.routes.js";
 
 import { initSocket } from "./services/socket.service.js";
 
@@ -44,6 +45,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/auth/webauthn", webauthnRoutes);
 
 // ============================
 // Health check

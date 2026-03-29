@@ -5,10 +5,12 @@ import { loginUser } from "@/src/services/auth.service";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/src/context/AuthContext";
 import Link from "next/link";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import api from "@/src/services/api";
 
 export default function LoginPage() {
 
@@ -49,6 +51,32 @@ export default function LoginPage() {
 
     }
 
+  };
+
+  const handleBiometricLogin = async () => {
+    try {
+
+      // 1. Pedir opciones al backend
+      const optionsRes = await api.post("/auth/webauthn/login/options", {
+        email
+      });
+
+      // 2. Lanzar WebAuthn (huella / face / windows hello)
+      const authResponse = await startAuthentication(optionsRes.data);
+
+      // 3. Verificar en backend
+      const verifyRes = await api.post("/auth/webauthn/login/verify", {
+        email,
+        credential: authResponse
+      });
+
+      login(verifyRes.data.token);
+      router.push("/dashboard");
+
+    } catch (e) {
+      console.error(e);
+      setError("Error con biometría");
+    }
   };
 
   return (
@@ -93,6 +121,14 @@ export default function LoginPage() {
 
           <Button className="w-full">
             Iniciar sesión
+          </Button>
+
+          <Button
+            type="button"
+            className="w-full bg-green-600"
+            onClick={handleBiometricLogin}
+          >
+            Iniciar con biometría
           </Button>
 
         </form>

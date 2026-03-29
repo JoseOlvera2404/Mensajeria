@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import api from "@/src/services/api";
 import { useAuth } from "@/src/context/AuthContext";
+import { startRegistration } from "@simplewebauthn/browser";
+
 
 export default function ProfileSection(){
 
@@ -39,6 +41,26 @@ export default function ProfileSection(){
 
     setFile(null);
 
+  };
+
+
+  const handleRegisterBiometric = async () => {
+    try {
+
+      const optionsRes = await api.post("/auth/webauthn/register/options");
+
+      const registration = await startRegistration(optionsRes.data);
+
+      await api.post("/auth/webauthn/register/verify", {
+        credential: registration
+      });
+
+      alert("Biometría activada");
+
+    } catch (e) {
+      console.error(e);
+      alert("Error registrando biometría");
+    }
   };
 
   const openFilePicker = ()=>{
@@ -111,6 +133,15 @@ export default function ProfileSection(){
           Guardar nombre
         </button>
 
+      </div>
+
+      <div className="space-y-2">
+        <button
+          onClick={handleRegisterBiometric}
+          className="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          Activar biometría (Web)
+        </button>
       </div>
 
     </div>
