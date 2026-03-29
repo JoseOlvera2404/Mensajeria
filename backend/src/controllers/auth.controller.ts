@@ -591,7 +591,12 @@ export const biometricLogin = async (req: Request, res: Response) => {
       });
     }
 
-    const publicKey = credResult.rows[0].public_key;
+    const rawKey = credResult.rows[0].public_key;
+
+    // convertir a formato PEM
+    const publicKey = `-----BEGIN PUBLIC KEY-----
+    ${rawKey.match(/.{1,64}/g).join("\n")}
+    -----END PUBLIC KEY-----`;
 
     // 3. Obtener challenge
     const challenge = (global as any).biometricChallenges?.[user.id];
