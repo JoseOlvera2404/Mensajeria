@@ -54,29 +54,43 @@ export default function LoginPage() {
   };
 
   const handleBiometricLogin = async () => {
+
     try {
 
-      // 1. Pedir opciones al backend
-      const optionsRes = await api.post("/auth/webauthn/login/options", {
-        email
-      });
+      if (!email) {
+        setError("Ingresa tu email primero");
+        return;
+      }
 
-      // 2. Lanzar WebAuthn (huella / face / windows hello)
-      const authResponse = await startAuthentication(optionsRes.data);
+      // 1. pedir opciones al backend
+      const { data: options } = await api.post(
+        "/webauthn/login-options",
+        { email }
+      );
 
-      // 3. Verificar en backend
-      const verifyRes = await api.post("/auth/webauthn/login/verify", {
-        email,
-        credential: authResponse
-      });
+      // 2. lanzar biometría (FaceID / huella)
+      const credential = await startAuthentication(options);
 
-      login(verifyRes.data.token);
+      // 3. enviar al backend para verificar
+      const { data } = await api.post(
+        "/webauthn/login-verify",
+        {
+          email,
+          credential
+        }
+      );
+
+      // 4. login normal
+      login(data.token);
       router.push("/dashboard");
 
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+
+      console.error(err);
       setError("Error con biometría");
+
     }
+
   };
 
   return (
@@ -125,8 +139,8 @@ export default function LoginPage() {
 
           <Button
             type="button"
-            className="w-full bg-green-600"
             onClick={handleBiometricLogin}
+            className="w-full bg-black text-white"
           >
             Iniciar con biometría
           </Button>
