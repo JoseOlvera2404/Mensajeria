@@ -32,7 +32,7 @@ router.post("/register-code", requestRegisterCode);
 
 router.post("/password-code", requestPasswordChangeCode);
 
-router.get("/biometric/challenge", authenticate, generateBiometricChallenge);
+router.get("/biometric/challenge", generateBiometricChallenge);
 
 router.post("/biometric/register", authenticate, registerBiometric);
 
