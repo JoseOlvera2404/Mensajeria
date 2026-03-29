@@ -64,7 +64,7 @@ export default function LoginPage() {
 
       // 1. pedir opciones al backend
       const { data: options } = await api.post(
-        "/webauthn/login-options",
+        "/webauthn/login/options",
         { email }
       );
 
@@ -73,7 +73,7 @@ export default function LoginPage() {
 
       // 3. enviar al backend para verificar
       const { data } = await api.post(
-        "/webauthn/login-verify",
+        "/webauthn/login/verify",
         {
           email,
           credential

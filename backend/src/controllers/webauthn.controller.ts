@@ -31,6 +31,7 @@ export const registerOptions = async (req: Request, res: Response) => {
       rpID,
       userID: new TextEncoder().encode(userId),
       userName: userId,
+      userDisplayName: userId,
       timeout: 60000,
       attestationType: "none",
       authenticatorSelection: {

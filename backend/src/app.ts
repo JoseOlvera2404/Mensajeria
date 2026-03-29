@@ -45,7 +45,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/auth/webauthn", webauthnRoutes);
+app.use("/api/webauthn", webauthnRoutes);
 
 // ============================
 // Health check
