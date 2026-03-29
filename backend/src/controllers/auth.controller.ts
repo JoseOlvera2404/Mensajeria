@@ -557,27 +557,23 @@ export const biometricLogin = async (req: Request, res: Response) => {
       });
     }
 
-    // 1. Obtener usuario
+    // 1. Usuario
     const userResult = await pool.query(
       `SELECT id, is_active FROM mensajeria.users WHERE email=$1`,
       [email]
     );
 
     if (userResult.rows.length === 0) {
-      return res.status(400).json({
-        message: "Usuario no encontrado"
-      });
+      return res.status(400).json({ message: "Usuario no encontrado" });
     }
 
     const user = userResult.rows[0];
 
     if (!user.is_active) {
-      return res.status(403).json({
-        message: "Cuenta desactivada"
-      });
+      return res.status(403).json({ message: "Cuenta desactivada" });
     }
 
-    // 2. Obtener credencial
+    // 2. Credencial
     const credResult = await pool.query(
       `SELECT public_key
        FROM mensajeria.webauthn_credentials
@@ -586,25 +582,21 @@ export const biometricLogin = async (req: Request, res: Response) => {
     );
 
     if (credResult.rows.length === 0) {
-      return res.status(401).json({
-        message: "Credencial no válida"
-      });
+      return res.status(401).json({ message: "Credencial no válida" });
     }
 
     const rawKey = credResult.rows[0].public_key;
 
-    // convertir a formato PEM
-    const publicKey = `-----BEGIN PUBLIC KEY-----
-    ${rawKey.match(/.{1,64}/g).join("\n")}
-    -----END PUBLIC KEY-----`;
+    // 🔥 FIX REAL
+    const cleanKey = rawKey.replace(/\s+/g, "");
 
-    // 3. Obtener challenge
+    const publicKey = `-----BEGIN PUBLIC KEY-----\n${cleanKey}\n-----END PUBLIC KEY-----`;
+
+    // 3. Challenge
     const challenge = (global as any).biometricChallenges?.[user.id];
 
     if (!challenge) {
-      return res.status(400).json({
-        message: "Challenge no encontrado"
-      });
+      return res.status(400).json({ message: "Challenge no encontrado" });
     }
 
     // 4. Verificar firma
@@ -618,12 +610,10 @@ export const biometricLogin = async (req: Request, res: Response) => {
     );
 
     if (!isValid) {
-      return res.status(401).json({
-        message: "Biometría inválida"
-      });
+      return res.status(401).json({ message: "Biometría inválida" });
     }
 
-    // 5. Generar token
+    // 5. Token
     const token = jwt.sign(
       { userId: user.id },
       process.env.JWT_SECRET as string,
@@ -637,7 +627,7 @@ export const biometricLogin = async (req: Request, res: Response) => {
 
   } catch (error) {
 
-    console.error(error);
+    console.error("ERROR BIOMETRICO:", error);
 
     return res.status(500).json({
       message: "Error en login biométrico"
