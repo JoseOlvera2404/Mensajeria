@@ -86,7 +86,7 @@ export const registerVerify = async (req: Request, res: Response) => {
       [
         userId,
         id,
-        Buffer.from(publicKey).toString("base64"),
+        publicKey,
         counter
       ]
     );
