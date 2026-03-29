@@ -601,7 +601,8 @@ export const biometricLogin = async (req: Request, res: Response) => {
 
     // 4. Verificar firma
     const verify = crypto.createVerify("RSA-SHA256");
-    verify.update(challenge);
+
+    verify.update(Buffer.from(challenge, "utf-8")); // 🔥 FIX
     verify.end();
 
     const isValid = verify.verify(
