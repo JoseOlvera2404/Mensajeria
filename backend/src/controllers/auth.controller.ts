@@ -587,9 +587,14 @@ export const biometricLogin = async (req: Request, res: Response) => {
 
     const rawKey = credResult.rows[0].public_key;
 
-    // ✅ FIX 1: NO limpiar espacios (esto rompía la key)
+    // 🔥 FIX REAL: FORMATEAR A PEM CORRECTAMENTE (64 chars por línea)
+    const formattedKey = rawKey
+      .replace(/\s+/g, "")
+      .match(/.{1,64}/g)
+      ?.join("\n");
+
     const publicKey = `-----BEGIN PUBLIC KEY-----
-${rawKey}
+${formattedKey}
 -----END PUBLIC KEY-----`;
 
     // 3. Challenge
@@ -599,7 +604,7 @@ ${rawKey}
       return res.status(400).json({ message: "Challenge no encontrado" });
     }
 
-    // ✅ FIX 2: limpiar signature (Android mete saltos de línea)
+    // 🔥 FIX: limpiar signature (Android mete saltos de línea)
     const cleanSignature = signature.replace(/\s+/g, "");
 
     // 4. Verificación
