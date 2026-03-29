@@ -181,7 +181,7 @@ export const loginVerify = async (req: Request, res: Response) => {
       expectedRPID: rpID,
       credential: {
         id: dbCred.credential_id,
-        publicKey: Buffer.from(dbCred.public_key, "base64"),
+        publicKey: dbCred.public_key,
         counter: dbCred.counter
       }
     });
