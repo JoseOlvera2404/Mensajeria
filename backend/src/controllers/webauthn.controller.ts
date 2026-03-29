@@ -71,22 +71,20 @@ export const registerVerify = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "No verificado" });
     }
 
-    const {
-      credential: {
-        id,
-        publicKey,
-        counter
-      }
-    } = verification.registrationInfo!;
+    const { credential } = verification.registrationInfo!;
+
+    const credentialID = credential.id;
+    const credentialPublicKey = credential.publicKey;
+    const counter = credential.counter;
 
     await pool.query(
-      `INSERT INTO mensajeria.webauthn_credentials
+      `INSERT INTO mensajeria.web_credentials
        (user_id, credential_id, public_key, counter)
        VALUES ($1,$2,$3,$4)`,
       [
         userId,
-        id,
-        publicKey,
+        credentialID,
+        credentialPublicKey,
         counter
       ]
     );
@@ -119,7 +117,7 @@ export const loginOptions = async (req: Request, res: Response) => {
     const userId = user.rows[0].id;
 
     const creds = await pool.query(
-      `SELECT credential_id FROM mensajeria.webauthn_credentials
+      `SELECT credential_id FROM mensajeria.web_credentials
        WHERE user_id=$1`,
       [userId]
     );
@@ -165,7 +163,7 @@ export const loginVerify = async (req: Request, res: Response) => {
     const userId = user.rows[0].id;
 
     const cred = await pool.query(
-      `SELECT * FROM mensajeria.webauthn_credentials
+      `SELECT * FROM mensajeria.web_credentials
        WHERE user_id=$1`,
       [userId]
     );
@@ -194,7 +192,7 @@ export const loginVerify = async (req: Request, res: Response) => {
 
     // actualizar contador
     await pool.query(
-      `UPDATE mensajeria.webauthn_credentials
+      `UPDATE mensajeria.web_credentials
        SET counter=$1
        WHERE user_id=$2`,
       [verification.authenticationInfo.newCounter, userId]
