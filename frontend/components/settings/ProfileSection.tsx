@@ -47,11 +47,13 @@ export default function ProfileSection(){
   const handleRegisterBiometric = async () => {
     try {
 
-      const optionsRes = await api.post("webauthn/register/options");
+      const optionsRes = await api.post("/webauthn/register/options");
+
+      console.log(optionsRes.data);
 
       const registration = await startRegistration(optionsRes.data);
 
-      await api.post("webauthn/register/verify", {
+      await api.post("/webauthn/register/verify", {
         credential: registration
       });
 
